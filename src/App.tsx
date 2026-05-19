@@ -18,7 +18,17 @@ import {
   Settings,
   Heart
 } from 'lucide-react';
-import { UserRole, Client, Dietitian, DietPlan, MealLog, Appointment, Payment } from './types';
+import { UserRole, Client, Dietitian, DietPlan, MealLog, Appointment, Payment, FoodItem, AlternativeProduct } from './types';
+import { 
+  initialClients, 
+  initialDietitians, 
+  initialDietPlans, 
+  initialMealLogs, 
+  initialAppointments, 
+  initialPayments, 
+  initialFoodDatabase, 
+  initialAlternativeProducts 
+} from './mockData';
 
 import Logo, { LogoIcon } from './components/Logo';
 
@@ -31,17 +41,21 @@ import AdminDashboard from './components/AdminDashboard';
 import { api } from './lib/api';
 
 export default function App() {
-  // Main database arrays in React state
-  const [clients, setClients] = useState<Client[]>([]);
-  const [dietitians, setDietitians] = useState<Dietitian[]>([]);
-  const [dietPlans, setDietPlans] = useState<DietPlan[]>([]);
-  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  // Main database arrays in React state — initialized with mock data as fallback
+  const [clients, setClients] = useState<Client[]>(initialClients);
+  const [dietitians, setDietitians] = useState<Dietitian[]>(initialDietitians);
+  const [dietPlans, setDietPlans] = useState<DietPlan[]>(initialDietPlans);
+  const [mealLogs, setMealLogs] = useState<MealLog[]>(initialMealLogs);
+  const [appointments, setAppointments] = useState<Appointment[]>(initialAppointments);
+  const [payments, setPayments] = useState<Payment[]>(initialPayments);
   
   // Non-editable food database helper references
-  const [foodDatabase, setFoodDatabase] = useState<any[]>([]);
-  const [alternativeProducts, setAlternativeProducts] = useState<any[]>([]);
+  const [foodDatabase, setFoodDatabase] = useState<FoodItem[]>(initialFoodDatabase);
+  const [alternativeProducts, setAlternativeProducts] = useState<AlternativeProduct[]>(initialAlternativeProducts);
+
+  // Loading and data source tracking
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataSource, setDataSource] = useState<'loading' | 'supabase' | 'local'>('loading');
 
   // Swappable simulated Active User role sandbox
   const [currentRole, setCurrentRole] = useState<UserRole>('dietitian');
@@ -50,37 +64,53 @@ export default function App() {
   const [selectedClientId, setSelectedClientId] = useState<string>('C01');
   const [currentDietitianId, setCurrentDietitianId] = useState<string>('D01');
 
-  // Dynamic Data Fetching
+  // Dynamic Data Fetching — tries Supabase first, keeps mock data if empty/error
   React.useEffect(() => {
     const fetchData = async () => {
-      const [
-        fetchedDietitians,
-        fetchedClients,
-        fetchedPlans,
-        fetchedLogs,
-        fetchedAppointments,
-        fetchedPayments,
-        fetchedFood,
-        fetchedAlternatives
-      ] = await Promise.all([
-        api.getDietitians(),
-        api.getClients(),
-        api.getDietPlans(),
-        api.getMealLogs(),
-        api.getAppointments(),
-        api.getPayments(),
-        api.getFoodItems(),
-        api.getAlternativeProducts()
-      ]);
+      try {
+        const [
+          fetchedDietitians,
+          fetchedClients,
+          fetchedPlans,
+          fetchedLogs,
+          fetchedAppointments,
+          fetchedPayments,
+          fetchedFood,
+          fetchedAlternatives
+        ] = await Promise.all([
+          api.getDietitians().catch(() => []),
+          api.getClients().catch(() => []),
+          api.getDietPlans().catch(() => []),
+          api.getMealLogs().catch(() => []),
+          api.getAppointments().catch(() => []),
+          api.getPayments().catch(() => []),
+          api.getFoodItems().catch(() => []),
+          api.getAlternativeProducts().catch(() => [])
+        ]);
 
-      setDietitians((fetchedDietitians || []) as any);
-      setClients((fetchedClients || []) as any);
-      setDietPlans((fetchedPlans || []) as any);
-      setMealLogs((fetchedLogs || []) as any);
-      setAppointments((fetchedAppointments || []) as any);
-      setPayments((fetchedPayments || []) as any);
-      setFoodDatabase((fetchedFood || []) as any);
-      setAlternativeProducts((fetchedAlternatives || []) as any);
+        // Only replace state if Supabase actually returned data
+        const hasSupabaseData = fetchedClients.length > 0 || fetchedDietitians.length > 0;
+        
+        if (hasSupabaseData) {
+          setDietitians(fetchedDietitians.length > 0 ? fetchedDietitians : initialDietitians);
+          setClients(fetchedClients.length > 0 ? fetchedClients : initialClients);
+          setDietPlans(fetchedPlans.length > 0 ? fetchedPlans : initialDietPlans);
+          setMealLogs(fetchedLogs.length > 0 ? fetchedLogs : initialMealLogs);
+          setAppointments(fetchedAppointments.length > 0 ? fetchedAppointments : initialAppointments);
+          setPayments(fetchedPayments.length > 0 ? fetchedPayments : initialPayments);
+          setFoodDatabase(fetchedFood.length > 0 ? fetchedFood : initialFoodDatabase);
+          setAlternativeProducts(fetchedAlternatives.length > 0 ? fetchedAlternatives : initialAlternativeProducts);
+          setDataSource('supabase');
+        } else {
+          // Supabase returned empty — RLS may be blocking, keep mock data
+          setDataSource('local');
+        }
+      } catch (error) {
+        console.warn('Supabase fetch failed, using local mock data.', error);
+        setDataSource('local');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchData();
@@ -95,6 +125,7 @@ export default function App() {
   const handleUpdateDietitians = (updatedDietitians: Dietitian[]) => setDietitians(updatedDietitians);
 
   return (
+
     <div className="min-h-screen bg-slate-50 flex font-sans selection:bg-emerald-100 selection:text-emerald-900" id="nutritrack-master">
       
       {/* Interactive Global Role Selector Left Sidebar - High Density Clinical Layout */}
@@ -224,8 +255,12 @@ export default function App() {
                 {currentRole === 'admin' && 'Enterprise Admin Portal'}
               </span>
             </h1>
-            <div className="hidden sm:inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold rounded uppercase tracking-wide">
-              Live Registry Sync
+            <div className={`hidden sm:inline-block px-2 py-0.5 text-[9px] font-bold rounded uppercase tracking-wide ${
+                dataSource === 'supabase' ? 'bg-emerald-100 text-emerald-700' : 
+                dataSource === 'local' ? 'bg-amber-100 text-amber-700' : 
+                'bg-slate-100 text-slate-500'
+              }`}>
+              {dataSource === 'supabase' ? '🟢 Live Supabase Sync' : dataSource === 'local' ? '🟡 Local Data Mode' : '⏳ Connecting...'}
             </div>
           </div>
           

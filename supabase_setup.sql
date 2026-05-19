@@ -209,3 +209,18 @@ INSERT INTO payments (id, client_id, amount, payment_date, status, method) VALUE
 ('PAY05', 'C01', 120.00, '2026-04-15', 'success', 'Credit Card (iyzico)'),
 ('PAY06', 'C02', 180.00, '2026-04-14', 'success', 'Credit Card (iyzico)');
 
+-- =============================================
+-- Disable Row Level Security (RLS) on all tables
+-- This allows the anon key to read/write data.
+-- For production, replace with proper RLS policies.
+-- =============================================
+ALTER TABLE dietitians DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
+ALTER TABLE food_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE alternative_products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE diet_plans DISABLE ROW LEVEL SECURITY;
+ALTER TABLE diet_plan_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE meal_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE meal_log_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
