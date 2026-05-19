@@ -1,0 +1,6 @@
+{
+  "name": "NutriTrack",
+  "description": "Dietitian-Client Nutrition Tracking and Consultation Platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
